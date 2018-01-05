@@ -1,6 +1,7 @@
 package com.ai.fighters;
 
 import com.ai.fighters.screens.PlayScreen;
+import com.ai.fighters.sprites.HumanPlayer;
 import com.ai.fighters.sprites.NNPlayer;
 import com.ai.fighters.sprites.Player;
 import com.badlogic.gdx.ApplicationAdapter;
@@ -30,7 +31,7 @@ public class AIFighters extends Game {
 		batch = new SpriteBatch();
 		world = new World(new Vector2(0, 0), false);
 
-		final Player p1 = new NNPlayer(1, world, new Vector2(P1_X, P1_Y));
+		final Player p1 = new HumanPlayer(1, world, new Vector2(P1_X, P1_Y));
 		final Player p2 = new NNPlayer(2, world, new Vector2(P2_X, P2_Y));
 
 		final PlayScreen playScreen = new PlayScreen(this, world, batch, p1, p2);
