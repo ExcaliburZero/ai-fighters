@@ -46,4 +46,7 @@ public class Bullet extends Sprite {
     public Player getShooter() {
         return shooter;
     }
+    public Vector2 getVelocity() {
+        return velocity;
+    }
 }

@@ -1,5 +1,6 @@
 package com.ai.fighters.sprites;
 
+import com.ai.fighters.screens.PlayScreen;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.math.Circle;
@@ -19,7 +20,7 @@ public abstract class Player extends Sprite {
     private static final float MOVE_SPEED = 80.0f;
     private static final int RADIUS = 5;
     private static final float BULLET_SPEED = 80.0f;
-    private static final float SHOOT_INTERVAL = 2.0f;
+    public static final float SHOOT_INTERVAL = 2.0f;
 
     public enum Command {LEFT, RIGHT, FOREWARD, SHOOT}
 
@@ -29,10 +30,12 @@ public abstract class Player extends Sprite {
 
     private float reloadTime;
     private final ArrayList<Bullet> bullets;
+    private final PlayScreen play;
 
-    public Player(final ArrayList<Bullet> bullets, final int number, final World world, final Vector2 position) {
+    public Player(final PlayScreen play, final ArrayList<Bullet> bullets, final int number, final World world, final Vector2 position) {
         super(new Texture("player" + number + ".png"));
 
+        this.play = play;
         this.bullets = bullets;
         this.number = number;
         this.world = world;
@@ -58,12 +61,12 @@ public abstract class Player extends Sprite {
     }
 
     private void turnLeft() {
-        System.out.println("Left");
+        //System.out.println("Left");
         body.setAngularVelocity(TURN_SPEED);
     }
 
     private void turnRight() {
-        System.out.println("Right");
+        //System.out.println("Right");
         body.setAngularVelocity(-TURN_SPEED);
     }
 
@@ -71,14 +74,14 @@ public abstract class Player extends Sprite {
         final float forceX = (float) Math.cos(body.getAngle()) * MOVE_SPEED;
         final float forceY = (float) Math.sin(body.getAngle()) * MOVE_SPEED;
 
-        System.out.println("Forward");
+        //System.out.println("Forward");
         body.setLinearVelocity(forceX, forceY);
     }
 
     private void shoot() {
         // TODO(chris): Implement
         if (reloadTime <= 0.0f) {
-            System.out.println("Shoot!");
+            //System.out.println("Shoot!");
 
             final float velX = (float) Math.cos(body.getAngle()) * BULLET_SPEED;
             final float velY = (float) Math.sin(body.getAngle()) * BULLET_SPEED;
@@ -95,7 +98,7 @@ public abstract class Player extends Sprite {
         setPosition(getCenter().x, getCenter().y);
 
         // TODO(chris): Add the actual game state
-        final GameState state = null;
+        final GameState state = play.getState(this);
 
         final Set<Command> commands = onStep(state);
         for (final Command c : commands) {
@@ -131,4 +134,12 @@ public abstract class Player extends Sprite {
     }
 
     public abstract Set<Command> onStep(final GameState gs);
+
+    public Body getBody() {
+        return body;
+    }
+
+    public float getReloadTime() {
+        return reloadTime;
+    }
 }

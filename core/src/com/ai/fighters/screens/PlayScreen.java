@@ -1,18 +1,23 @@
 package com.ai.fighters.screens;
 
 import com.ai.fighters.AIFighters;
+import com.ai.fighters.GeneticAlgorithm;
 import com.ai.fighters.sprites.Bullet;
+import com.ai.fighters.sprites.GameState;
+import com.ai.fighters.sprites.NNPlayer;
 import com.ai.fighters.sprites.Player;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
 import com.badlogic.gdx.physics.box2d.World;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Optional;
 
 /**
  * Created by chris on 1/5/18.
@@ -25,24 +30,24 @@ public class PlayScreen implements Screen {
     private final World world;
     private final Box2DDebugRenderer b2dr;
     private final SpriteBatch sb;
+    private final GeneticAlgorithm ga;
     private final OrthographicCamera camera;
     private float timeLeft;
 
     private final ArrayList<Bullet> bullets;
-    private final Player p1;
-    private final Player p2;
+    private Player p1;
+    private Player p2;
 
     private final HashMap<Player,Integer> scores;
 
     public PlayScreen(final AIFighters game, final float timeLimit, final ArrayList<Bullet> bullets, final World world,
-                      final SpriteBatch sb, final Player p1, final Player p2) {
+                      final SpriteBatch sb, final GeneticAlgorithm ga) {
         this.game = game;
         this.timeLeft = timeLimit;
         this.bullets = bullets;
         this.world = world;
         this.sb = sb;
-        this.p1 = p1;
-        this.p2 = p2;
+        this.ga = ga;
 
         camera = new OrthographicCamera(AIFighters.WIDTH, AIFighters.HEIGHT);
         camera.position.set(AIFighters.WIDTH / 2, AIFighters.HEIGHT / 2, 0);
@@ -51,8 +56,12 @@ public class PlayScreen implements Screen {
         b2dr = new Box2DDebugRenderer();
 
         scores = new HashMap<Player, Integer>();
+    }
 
-        final Player[] players = {p1, p2};
+    public void setPlayers(final Player[] players) {
+        p1 = players[0];
+        p2 = players[1];
+
         for (final Player p : players) {
             scores.put(p, INITIAL_SCORE);
         }
@@ -74,7 +83,7 @@ public class PlayScreen implements Screen {
                     bulletsToRemove.add(b);
 
                     scores.put(p, scores.get(p) + HIT_SCORE_INC);
-                    System.out.println("Hit!");
+                    //System.out.println("Hit!");
 
                     break;
                 }
@@ -86,12 +95,12 @@ public class PlayScreen implements Screen {
 
     private void update(final float dt) {
         timeLeft -= dt;
-        System.out.println(timeLeft);
+        //System.out.println(timeLeft);
         if (timeLeft <= 0) {
             for (final Player p : scores.keySet()) {
-                System.out.println(p + ":\t" + scores.get(p));
+                //System.out.println(p + ":\t" + scores.get(p));
             }
-            System.exit(0);
+            endGame();
         }
 
         world.step(1 / 60f, 6, 2);
@@ -99,6 +108,40 @@ public class PlayScreen implements Screen {
         p1.update(dt);
         p2.update(dt);
         updateBullets(dt);
+    }
+
+    public GameState getState(final Player p) {
+        final Player e = (p == p1) ? p2 : p1;
+
+        final Optional<Bullet> pBullet = bullets.stream().filter(b -> b.getShooter() == p).reduce((first, second) -> second);
+        final Optional<Bullet> eBullet = bullets.stream().filter(b -> b.getShooter() == e).reduce((first, second) -> second);
+
+        return new GameState(p.getX(), p.getY(), p.getBody().getAngle(),
+                e.getX(), e.getY(), e.getBody().getAngle(),
+                pBullet.map(b -> b.getX()).orElse(-1.0f),
+                pBullet.map(b -> b.getY()).orElse(-1.0f),
+                pBullet.map(b -> b.getVelocity().x).orElse(0.0f),
+                pBullet.map(b -> b.getVelocity().y).orElse(0.0f),
+                eBullet.map(b -> b.getX()).orElse(-1.0f),
+                eBullet.map(b -> b.getY()).orElse(-1.0f),
+                eBullet.map(b -> b.getVelocity().x).orElse(0.0f),
+                eBullet.map(b -> b.getVelocity().y).orElse(0.0f),
+                p.getReloadTime(),
+                e.getReloadTime());
+    }
+
+    private void endGame() {
+        ga.recieveScore((NNPlayer) p1, scores.get(p1));
+        ga.recieveScore((NNPlayer) p2, scores.get(p2));
+
+        final World world = new World(new Vector2(0, 0), false);
+
+        final PlayScreen play = new PlayScreen(game, AIFighters.TIME_LIMIT, bullets, world, sb, ga);
+
+        final Player p1 = new NNPlayer(play, bullets, 2, world, new Vector2(AIFighters.P1_X, AIFighters.P1_Y), ga.getRandomPlayer());
+        final Player p2 = new NNPlayer(play, bullets, 2, world, new Vector2(AIFighters.P2_X, AIFighters.P2_Y), ga.getRandomPlayer());
+        play.setPlayers(new Player[]{p1, p2});
+        game.setScreen(play);
     }
 
     @Override
