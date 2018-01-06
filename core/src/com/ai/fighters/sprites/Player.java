@@ -2,9 +2,13 @@ package com.ai.fighters.sprites;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.math.Circle;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Shape2D;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.*;
 
+import java.util.ArrayList;
 import java.util.Set;
 
 /**
@@ -14,19 +18,26 @@ public abstract class Player extends Sprite {
     private static final float TURN_SPEED = 3.0f;
     private static final float MOVE_SPEED = 80.0f;
     private static final int RADIUS = 5;
+    private static final float BULLET_SPEED = 80.0f;
+    private static final float SHOOT_INTERVAL = 2.0f;
 
-    public enum Command { LEFT, RIGHT, FOREWARD, SHOOT };
+    public enum Command {LEFT, RIGHT, FOREWARD, SHOOT}
 
-    private final int number;
+    protected final int number;
     private final World world;
     public final Body body;
 
-    public Player(final int number, final World world, final Vector2 position) {
+    private float reloadTime;
+    private final ArrayList<Bullet> bullets;
+
+    public Player(final ArrayList<Bullet> bullets, final int number, final World world, final Vector2 position) {
         super(new Texture("player" + number + ".png"));
 
+        this.bullets = bullets;
         this.number = number;
         this.world = world;
         body = defineBody(position);
+        reloadTime = 0.0f;
     }
 
     private Body defineBody(final Vector2 position) {
@@ -66,6 +77,18 @@ public abstract class Player extends Sprite {
 
     private void shoot() {
         // TODO(chris): Implement
+        if (reloadTime <= 0.0f) {
+            System.out.println("Shoot!");
+
+            final float velX = (float) Math.cos(body.getAngle()) * BULLET_SPEED;
+            final float velY = (float) Math.sin(body.getAngle()) * BULLET_SPEED;
+
+            final Vector2 velocity = new Vector2(velX, velY);
+
+            bullets.add(new Bullet(this, getCenter(), velocity));
+
+            reloadTime = SHOOT_INTERVAL;
+        }
     }
 
     public void update(final float dt) {
@@ -93,10 +116,18 @@ public abstract class Player extends Sprite {
         if (!commands.contains(Command.FOREWARD)) {
             body.setLinearVelocity(0, 0);
         }
+
+        if (reloadTime > 0.0f) {
+            reloadTime -= dt;
+        }
     }
 
     private Vector2 getCenter() {
         return new Vector2(body.getPosition().x - getWidth() / 2, body.getPosition().y - getHeight() / 2);
+    }
+
+    public Rectangle getBounds() {
+        return new Rectangle(body.getPosition().x, body.getPosition().y, getWidth(), getHeight());
     }
 
     public abstract Set<Command> onStep(final GameState gs);

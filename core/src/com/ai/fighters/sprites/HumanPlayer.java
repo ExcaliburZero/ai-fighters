@@ -5,6 +5,7 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -12,8 +13,8 @@ import java.util.Set;
  * Created by chris on 1/5/18.
  */
 public class HumanPlayer extends Player {
-    public HumanPlayer(final int number, final World world, final Vector2 position) {
-        super(number, world, position);
+    public HumanPlayer(final ArrayList<Bullet> bullets, final int number, final World world, final Vector2 position) {
+        super(bullets, number, world, position);
     }
 
     @Override
@@ -34,5 +35,10 @@ public class HumanPlayer extends Player {
         }
 
         return commands;
+    }
+
+    @Override
+    public String toString() {
+        return "Human Player " + number;
     }
 }

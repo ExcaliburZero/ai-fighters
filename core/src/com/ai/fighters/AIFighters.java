@@ -1,6 +1,7 @@
 package com.ai.fighters;
 
 import com.ai.fighters.screens.PlayScreen;
+import com.ai.fighters.sprites.Bullet;
 import com.ai.fighters.sprites.HumanPlayer;
 import com.ai.fighters.sprites.NNPlayer;
 import com.ai.fighters.sprites.Player;
@@ -13,6 +14,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.World;
 
+import java.util.ArrayList;
+
 public class AIFighters extends Game {
     public static final int WIDTH = 600;
     public static final int HEIGHT = 400;
@@ -23,6 +26,8 @@ public class AIFighters extends Game {
 	private static final int P2_X = 300;
 	private static final int P2_Y = 300;
 
+	private static final float TIME_LIMIT = 100f;
+
 	private SpriteBatch batch;
 	private World world;
 	
@@ -31,10 +36,12 @@ public class AIFighters extends Game {
 		batch = new SpriteBatch();
 		world = new World(new Vector2(0, 0), false);
 
-		final Player p1 = new HumanPlayer(1, world, new Vector2(P1_X, P1_Y));
-		final Player p2 = new NNPlayer(2, world, new Vector2(P2_X, P2_Y));
+		final ArrayList<Bullet> bullets = new ArrayList<Bullet>();
 
-		final PlayScreen playScreen = new PlayScreen(this, world, batch, p1, p2);
+		final Player p1 = new HumanPlayer(bullets, 1, world, new Vector2(P1_X, P1_Y));
+		final Player p2 = new NNPlayer(bullets, 2, world, new Vector2(P2_X, P2_Y));
+
+		final PlayScreen playScreen = new PlayScreen(this, TIME_LIMIT, bullets, world, batch, p1, p2);
 		this.setScreen(playScreen);
 	}
 
