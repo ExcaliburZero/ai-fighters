@@ -1,19 +1,17 @@
 package com.ai.fighters.screens;
 
 import com.ai.fighters.AIFighters;
-import com.ai.fighters.GeneticAlgorithm;
-import com.ai.fighters.sprites.Bullet;
-import com.ai.fighters.sprites.GameState;
-import com.ai.fighters.sprites.NNPlayer;
-import com.ai.fighters.sprites.Player;
+import com.ai.fighters.FuzzyGeneticAlgorithm;
+import com.ai.fighters.sprites.*;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.physics.box2d.Box2DDebugRenderer;
-import com.badlogic.gdx.physics.box2d.World;
+import com.badlogic.gdx.physics.box2d.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,13 +22,24 @@ import java.util.Optional;
  */
 public class PlayScreen implements Screen {
     private static final int INITIAL_SCORE = 0;
-    private static final int HIT_SCORE_INC = 2;
+    private static final int HIT_SCORE_INC = 10;
+    private static final int SHOOT_SCORE_DEC = -1;
+    private static final int HIT_SCORE_DEC = -HIT_SCORE_INC + SHOOT_SCORE_DEC;
+
+    private static final float PLAYER_DIST_MIN = 30f;
+    private static final int COLLIDE_SCORE_DEC = -50;
+
+    private static final int SCORE_1_X = 10;
+    private static final int SCORE_1_Y = 30;
+
+    private static final int SCORE_2_X = 100;
+    private static final int SCORE_2_Y = 30;
 
     private final AIFighters game;
     private final World world;
     private final Box2DDebugRenderer b2dr;
     private final SpriteBatch sb;
-    private final GeneticAlgorithm ga;
+    private final FuzzyGeneticAlgorithm ga;
     private final OrthographicCamera camera;
     private float timeLeft;
 
@@ -39,9 +48,10 @@ public class PlayScreen implements Screen {
     private Player p2;
 
     private final HashMap<Player,Integer> scores;
+    private final BitmapFont font;
 
     public PlayScreen(final AIFighters game, final float timeLimit, final ArrayList<Bullet> bullets, final World world,
-                      final SpriteBatch sb, final GeneticAlgorithm ga) {
+                      final SpriteBatch sb, final FuzzyGeneticAlgorithm ga) {
         this.game = game;
         this.timeLeft = timeLimit;
         this.bullets = bullets;
@@ -56,6 +66,45 @@ public class PlayScreen implements Screen {
         b2dr = new Box2DDebugRenderer();
 
         scores = new HashMap<Player, Integer>();
+        font = new BitmapFont();
+
+        defineWalls(world);
+    }
+
+    private void defineWalls(final World world) {
+        for (int i = 0; i < 2; i++) {       // Wall (0) or floor (1)
+            for (int j = 0; j < 2; j++) {   // Top/Left (0) or Bottom/Right (1)
+                final BodyDef bdef = new BodyDef();
+                //bdef.position.set(position);
+                bdef.type = BodyDef.BodyType.StaticBody;
+
+                final Body body = world.createBody(bdef);
+
+                final FixtureDef fdef = new FixtureDef();
+                final PolygonShape shape = new PolygonShape();
+
+                if (i == 0) {
+                    Vector2[] vertexArray = new Vector2[4];
+                    vertexArray[0] = new Vector2((j == 0) ? -1f : AIFighters.WIDTH - 1, 0f);
+                    vertexArray[1] = new Vector2((j == 0) ? 1f : AIFighters.WIDTH + 1, 0f);
+                    vertexArray[2] = new Vector2((j == 0) ? -1f : AIFighters.WIDTH - 1, AIFighters.HEIGHT);
+                    vertexArray[3] = new Vector2((j == 0) ? 1f : AIFighters.WIDTH + 1, AIFighters.HEIGHT);
+
+                    shape.set(vertexArray);
+                } else {
+                    Vector2[] vertexArray = new Vector2[4];
+                    vertexArray[0] = new Vector2(0f, (j == 0) ? -1f : AIFighters.HEIGHT - 1);
+                    vertexArray[1] = new Vector2(0f, (j == 0) ? 1f : AIFighters.HEIGHT + 1);
+                    vertexArray[2] = new Vector2(AIFighters.WIDTH, (j == 0) ? -1f : AIFighters.HEIGHT - 1);
+                    vertexArray[3] = new Vector2(AIFighters.WIDTH, (j == 0) ? 1f : AIFighters.HEIGHT + 1);
+
+                    shape.set(vertexArray);
+                }
+
+                fdef.shape = shape;
+                body.createFixture(fdef);
+            }
+        }
     }
 
     public void setPlayers(final Player[] players) {
@@ -65,6 +114,10 @@ public class PlayScreen implements Screen {
         for (final Player p : players) {
             scores.put(p, INITIAL_SCORE);
         }
+    }
+
+    public void shoot(final Player p) {
+        scores.put(p, scores.get(p) + SHOOT_SCORE_DEC);
     }
 
     @Override
@@ -82,7 +135,8 @@ public class PlayScreen implements Screen {
                 if (b.getShooter() != p && b.getBounds().overlaps(p.getBounds())) {
                     bulletsToRemove.add(b);
 
-                    scores.put(p, scores.get(p) + HIT_SCORE_INC);
+                    scores.put(p, scores.get(p) + HIT_SCORE_DEC);
+                    scores.put(b.getShooter(), scores.get(b.getShooter()) + HIT_SCORE_INC);
                     //System.out.println("Hit!");
 
                     break;
@@ -108,6 +162,14 @@ public class PlayScreen implements Screen {
         p1.update(dt);
         p2.update(dt);
         updateBullets(dt);
+
+        if (getPlayersDistance() < PLAYER_DIST_MIN) {
+            p1.body.setTransform(AIFighters.P1_X, AIFighters.P1_Y, 0);
+            p2.body.setTransform(AIFighters.P2_X, AIFighters.P2_Y, 0);
+
+            scores.put(p1, scores.get(p1) + COLLIDE_SCORE_DEC);
+            scores.put(p2, scores.get(p2) + COLLIDE_SCORE_DEC);
+        }
     }
 
     public GameState getState(final Player p) {
@@ -131,15 +193,18 @@ public class PlayScreen implements Screen {
     }
 
     private void endGame() {
-        ga.recieveScore((NNPlayer) p1, scores.get(p1));
-        ga.recieveScore((NNPlayer) p2, scores.get(p2));
+        ga.recieveScore((FuzzyGNPlayer) p1, scores.get(p1));
+        ga.recieveScore((FuzzyGNPlayer) p2, scores.get(p2));
+
+        final ArrayList<Bullet> bullets = new ArrayList<>();
 
         final World world = new World(new Vector2(0, 0), false);
 
         final PlayScreen play = new PlayScreen(game, AIFighters.TIME_LIMIT, bullets, world, sb, ga);
 
-        final Player p1 = new NNPlayer(play, bullets, 2, world, new Vector2(AIFighters.P1_X, AIFighters.P1_Y), ga.getRandomPlayer());
-        final Player p2 = new NNPlayer(play, bullets, 2, world, new Vector2(AIFighters.P2_X, AIFighters.P2_Y), ga.getRandomPlayer());
+        final Player p1 = new FuzzyGNPlayer(play, bullets, 1, world, new Vector2(AIFighters.P1_X, AIFighters.P1_Y), ga.getRandomPlayer());
+        final Player p2 = new FuzzyGNPlayer(play, bullets, 2, world, new Vector2(AIFighters.P2_X, AIFighters.P2_Y), ga.getRandomPlayer());
+
         play.setPlayers(new Player[]{p1, p2});
         game.setScreen(play);
     }
@@ -159,6 +224,10 @@ public class PlayScreen implements Screen {
         for (final Bullet b : bullets) {
             b.draw(sb);
         }
+
+        font.setColor(Color.BLACK);
+        font.draw(sb, scores.get(p1).toString(), SCORE_1_X, SCORE_1_Y);
+        font.draw(sb, scores.get(p2).toString(), SCORE_2_X, SCORE_2_Y);
         sb.end();
 
         b2dr.render(world, camera.combined);
@@ -187,5 +256,9 @@ public class PlayScreen implements Screen {
     @Override
     public void dispose() {
 
+    }
+
+    private double getPlayersDistance() {
+        return Math.sqrt(Math.pow(p1.getX() - p2.getX(), 2) + Math.pow(p1.getY() - p2.getY(), 2));
     }
 }

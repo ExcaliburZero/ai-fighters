@@ -79,7 +79,6 @@ public abstract class Player extends Sprite {
     }
 
     private void shoot() {
-        // TODO(chris): Implement
         if (reloadTime <= 0.0f) {
             //System.out.println("Shoot!");
 
@@ -91,6 +90,7 @@ public abstract class Player extends Sprite {
             bullets.add(new Bullet(this, getCenter(), velocity));
 
             reloadTime = SHOOT_INTERVAL;
+            play.shoot(this);
         }
     }
 
